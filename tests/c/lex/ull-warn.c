@@ -1,3 +1,5 @@
+// EXPECT-ERROR
+
 typedef unsigned long long uint64_t;
 
 unsigned int hex(unsigned int a)
@@ -25,12 +27,12 @@ unsigned int hex(unsigned int a)
 
 unsigned int d(unsigned int a)
 {
-    // Warning: '18446744073709551615' treated as '18446744073709551615ull'
+    // CHECK-ERR: Warning: '18446744073709551615' treated as '18446744073709551615ull'
     uint64_t  xl = 18446744073709551615;    // signed 2^64-1 warn: forced to unsigned
 
     uint64_t ull = 18446744073709551615ULL; // unsigned 2^64-1 ok
 
-    // Warning: '9223372036854775809' treated as '9223372036854775809ull'
+    // CHECK-ERR: Warning: '9223372036854775809' treated as '9223372036854775809ull'
     uint64_t mll = 9223372036854775809;    // (INT64_MAX+1) warn: forced to unsigned
 
     return xl + ull + mll;
