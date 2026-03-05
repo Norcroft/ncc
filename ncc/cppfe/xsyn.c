@@ -2303,10 +2303,15 @@ static Expr *structor_expr(Symstr *structorsv, Binder *thisb, ClassMember *p)
             /* if the member is a base or a vbase.                     */
             Expr *thislv = mkfieldselector(s_arrow, (Expr *)thisb, p);
             binduses_(thisb) |= u_referenced;
-            if (nelts == 0)
+
+            Binder *def_structor = default_structor(structorsv, cla, NOARGS);
+            if (def_structor == 0) {
+                e = 0;
+            }
+            else if (nelts == 0)
             {   if (is_dtor)
                     args = mkExprList1(lit_zero);
-                e = mkspecialfnap(default_structor(structorsv, cla, NOARGS),
+                e = mkspecialfnap(def_structor,
                                   nonconst_thislv(thislv, tagbindtype_(cla)),
                                   args,
                                   (attributes_(p) & (CB_BASE|CB_VBASE)) != 0);
@@ -2318,13 +2323,15 @@ static Expr *structor_expr(Symstr *structorsv, Binder *thisb, ClassMember *p)
                 e = array_of_class_map(
                         thislv,
                         nelts, size, structorsv != dtorsym,
-                        mkunary(s_addrof,
-                                (Expr *)default_structor(structorsv, cla, NOARGS)),
+                        mkunary(s_addrof, (Expr *)def_structor),
                         structorsv == dtorsym);
             }
-            if (e == 0)
+            if (e == 0) {
+                // FIXME: Seems likely this should be an error, unless it
+                // trips too often.
                 cc_warn(syn_warn_no_default_structor, p, cla,
                         structor_string(structorsv));
+            }
         }
     }
     else if (structorsv == ctorsym)
