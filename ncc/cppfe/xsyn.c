@@ -2301,10 +2301,11 @@ static Expr *structor_expr(Symstr *structorsv, Binder *thisb, ClassMember *p)
         {   /* call the default ctor/dtor if the member is of a class  */
             /* type which isn't Plain Ol' Data. Call the core function */
             /* if the member is a base or a vbase.                     */
+            Binder *def_structor;
             Expr *thislv = mkfieldselector(s_arrow, (Expr *)thisb, p);
             binduses_(thisb) |= u_referenced;
 
-            Binder *def_structor = default_structor(structorsv, cla, NOARGS);
+            def_structor = default_structor(structorsv, cla, NOARGS);
             if (def_structor == 0) {
                 e = 0;
             }
