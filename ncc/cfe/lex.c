@@ -1175,6 +1175,7 @@ void lex_init()         /* C version  */
         { "__value_in_regs", s_structreg },
         { "__packed", s_unaligned},
         { "__opaque", s_opaque },
+        { "_Static_assert", s_static_assert },
 #ifdef TARGET_HAS_INLINE_ASSEMBLER
         { "__asm",    s_asm },
 #endif
@@ -1224,6 +1225,7 @@ void lex_init()         /* C version  */
         { "virtual",  CPP_word|s_virtual },
         { "typename", CPP_word|s_typename },
         { "export",   CPP_word|s_export },
+        { "static_assert", CPP_word|s_static_assert },
 /* ANSI C++ draft 950428 adds operator alternative representations...     */
 /* minor nit:  these will appear tranformed in error messages */
         { "bitand",   CPP_word|s_and },
@@ -1355,4 +1357,3 @@ void lex_reinit()
 }
 
 /* End of lex.c */
-

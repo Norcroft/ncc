@@ -232,6 +232,7 @@ static DeclRhsList *rd_decllist(int declflag);
 static void rd_enumdecl(TagBinder *tb);
 static void rd_classdecl_(TagBinder *tb);
 static DeclRhsList *rd_decl2(int, SET_BITMAP);
+static TopDecl *rd_static_assert_decl(void);
 
 /* newer comments...
  * 2. (7-apr-86 further change):
@@ -697,7 +698,8 @@ static bool isexprstarter(AEop op)
 /* Ditto for isdeclstarter3_() which is currently rather a placeholder. */
 #define isdeclstarter3_(curlex) \
     ((isdeclstarter2_(curlex) && (!LanguageIsCPlusPlus || is_declaration(PASTCOMMA))) || \
-     (curlex.sym == s_asm && peepsym() == s_lpar) || curlex.sym == s_template)
+     (curlex.sym == s_asm && peepsym() == s_lpar) || \
+     curlex.sym == s_template || curlex.sym == s_static_assert)
 
 static Expr *mkunaryorop(AEop op, Expr *a)
 {   if (h0_(a) == s_error) return errornode;    /* @@@ correct placing? */
@@ -4452,6 +4454,8 @@ static TopDecl *rd_decl(int declflag, SET_BITMAP accbits)
         d->declbind = gentempbinder(te_int);
         return (TopDecl *) syn_list2(s_decl, d);
     }
+    if (curlex.sym == s_static_assert)
+        return rd_static_assert_decl();
     if (LanguageIsCPlusPlus)
     {   if (declflag & (TOPLEVEL|BLOCKHEAD|MEMBER))
             cur_template_formals = NULL;
@@ -4803,6 +4807,51 @@ static DeclRhsList *rd_decl2(int declflag, SET_BITMAP accbits)
     return d->v_f.var;
 }
 
+static TopDecl *rd_static_assert_decl(void)
+{
+    Expr *test = NULL, *msg = NULL;
+
+    nextsym();
+    checkfor_ket(s_lpar);
+    test = rd_expr(UPTOCOMMA);
+    if (curlex.sym == s_comma)
+    {   nextsym();
+        if (isstring_(curlex.sym))
+            msg = rd_ANSIstring();
+        else
+        {   cc_err(syn_err_expected_string_literal);
+            if (curlex.sym != s_rpar)
+                (void)rd_expr(UPTOCOMMA);
+        }
+    }
+    // Could check language version here reporting syntax error if no comma, eg.
+    // else if (LanguageIsCPlusPlus && cpp_version < 17) checkfor_ket(s_comma);
+    // else if (!LanguageIsCPlusPlus && c_version < 23) checkfor_ket(s_comma);
+    checkfor_ket(s_rpar);
+    checkfor_ket(s_semicolon);
+
+    if (test != NULL)
+    {   test = optimise0(test);
+        if (test != NULL && h0_(test) == s_evalerror)
+        {   cc_rerr((msg_t)arg3_(test), h0_(arg2_(test)));
+            test = arg1_(test);
+        }
+        if (test != NULL)
+        {   AEop op = h0_(test);
+            if (op != s_integer && op != s_int64con)
+                (void)evaluate(test);
+            else if (evaluate(test) == 0)
+            {   if (msg != NULL)
+                    cc_err(syn_err_static_assert_failed_msg, msg);
+                else
+                    cc_err(syn_err_static_assert_failed);
+            }
+        }
+    }
+
+    return (TopDecl *)syn_list2(s_decl, 0);
+}
+
 /* rd_formals_2() is only used once in rd_formals_1().  It behaves      */
 /* very much like rd_decllist, but different concrete syntax.           */
 /* It copes with both ANSI and olde-style formals (and now C++).        */
@@ -4970,6 +5019,7 @@ static void rd_strdecl(TagBinder *b, ClassMember *bb)
             || curlex.sym == s_and
             || curlex.sym == s_colon            /* e.g. class A{:32};   */
             || curlex.sym == s_semicolon
+            || curlex.sym == s_static_assert
             || curlex.sym == s_template)
         {   TopDecl *td; DeclRhsList *d;
             if (curlex.sym == s_typestartsym) nextsym();

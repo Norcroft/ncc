@@ -115,12 +115,15 @@
 #define syn_err_expected2a "expected $s or $s"
 #define syn_err_mix_strings "char and wide (L\"...\") strings do not concatenate"
 #define syn_err_expected_expr "<expression> expected but found $l"
+#define syn_err_expected_string_literal "expected string literal but found $l"
 #ifdef EXTENSION_VALOF
 #define syn_err_valof_block \
         "{ following a cast will be treated as VALOF block"
 #endif
 #define syn_err_typedef "typedef name $r used in expression context"
 #define syn_err_assertion "___assert(0, $e)"
+#define syn_err_static_assert_failed "static assertion failed"
+#define syn_err_static_assert_failed_msg "static assertion failed: $e"
 #define syn_err_expected_member "Expected <member> but found $l"
 #define syn_err_hashif_eof "EOF not newline after #if ..."
 #define syn_err_hashif_junk "Junk after #if <expression>"

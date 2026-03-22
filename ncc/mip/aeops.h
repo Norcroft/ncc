@@ -310,6 +310,7 @@ typedef enum AE_op {
     s_template,
     s_typename,         /* names the following id a type, post-ARM feature */
     s_export,
+    s_static_assert,    /* C11/C++ static assertion declaration */
     s_this,
 
 #  define isaccessspec_(op) (s_private <= (op) && (op) <= s_public )
