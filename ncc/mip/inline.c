@@ -126,12 +126,9 @@ static Binder *GlobalBinderCopy(SaveFnState *st, Binder *b) {
   if (h0_(b) != s_binder) return (Binder *)(IPtr)h0_(b);
   { Symstr *sym = bindsym_(b);
     Binder *bnew;
-    size_t n;
-    if (bindstg_(b) & (bitofstg_(s_virtual)|b_globalregvar|bitofstg_(s_auto)))
-      n = sizeof(Binder);
-    else {
+    size_t n = sizeofbinder_(b);
+    if (n == SIZEOF_NONAUTO_BINDER) {
       if (attributes_(b) & A_GLOBALSTORE) return b;
-      n = SIZEOF_NONAUTO_BINDER;
     }
     if (isgensym(sym)) {
       SymTrans *p = st->symtrans;
@@ -590,12 +587,9 @@ static BindList *FromGlobalSharedBindListCopy(SaveFnState *st, BindList *bl);
 static Binder *FromGlobalBinderCopy(SaveFnState *st, Binder *b) {
   if (h0_(b) != s_binder) return (Binder *)(IPtr)h0_(b);
   { Binder *bnew;
-    size_t n;
-    if (bindstg_(b) & (bitofstg_(s_virtual)|b_globalregvar|bitofstg_(s_auto)))
-      n = sizeof(Binder);
-    else {
+    size_t n = sizeofbinder_(b);
+    if (n == SIZEOF_NONAUTO_BINDER) {
       if (attributes_(b) & A_GLOBALSTORE) return b;
-      n = SIZEOF_NONAUTO_BINDER;
     }
     bnew = mk_binder(bindsym_(b), bindstg_(b), bindtype_(b));
     memcpy(bnew, b, n);

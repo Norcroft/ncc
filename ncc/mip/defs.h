@@ -606,6 +606,13 @@ struct Binder {
 
 /* Athough the following fields are logically part of BindVar, the code */
 /* requires less changes by leaving them here.                          */
+/*
+ * Keep this in sync with sizeofbinder_() below. Many Binders are smaller than
+ * sizeof(Binder), so allocations/copy should instead use sizeofbinder_().
+ *
+ * The macro's name isn't very accurate. Most, but not all, non-auto binders,
+ * use this smaller amount of memory, such as an ordinary global/static/extern.
+ */
 #define SIZEOF_NONAUTO_BINDER offsetof(Binder,bindxx)
 #define SIZEOF_CLASSMEMBER    offsetof(Binder,bindxx)
   union {
@@ -747,6 +754,12 @@ struct Binder {
 #define b_clinkage       0x08000L /* c linkage */
 #define b_globalregvar    bitofstg_(s_globalreg)
 /*      STGBITS       0x03ff0000L */
+
+#define FULLSIZE_BINDER_STGBITS \
+    (bitofstg_(s_virtual) | b_globalregvar | bitofstg_(s_auto))
+#define sizeofbinderstg_(stg) \
+    (((stg) & FULLSIZE_BINDER_STGBITS) ? sizeof(Binder) : SIZEOF_NONAUTO_BINDER)
+#define sizeofbinder_(b) sizeofbinderstg_(bindstg_(b))
 
 #define isenumconst_(b)     (bindstg_(b) & b_enumconst)
 

@@ -1424,13 +1424,16 @@ bool has_template_arg_scope(void)
 }
 
 BindList *clone_bindlist(BindList * bl, bool glob)
-{   Binder *b;
+{   Binder *b, *src;
     TypeExpr *t;
+    size_t size;
     if (!bl) return NULL;
-    b = (Binder *) ((glob) ? GlobAlloc(SU_Bind, sizeof(Binder)) :
-                             BindAlloc(sizeof(Binder)));
-    memcpy((char *)b, (char *)bl->bindlistcar, sizeof(Binder));
-    t = clone_typeexpr(bindtype_(bl->bindlistcar));
+    src = bl->bindlistcar;
+    size = sizeofbinder_(src);
+    b = (Binder *) ((glob) ? GlobAlloc(SU_Bind, (int32)size) :
+                             BindAlloc((int32)size));
+    memcpy((char *)b, (char *)src, size);
+    t = clone_typeexpr(bindtype_(src));
     bindtype_(b) = (glob) ? globalize_typeexpr(t) : t;
     return (glob) ? (BindList *)global_cons2(SU_Bind,
                             clone_bindlist(bl->bindlistcdr, glob), b) :
@@ -1450,8 +1453,9 @@ ScopeSaver dup_template_scope(void)
         switch (h0_(l)) {
         case s_binder:
           {   ClassMember *b;
-              b = (ClassMember *)GlobAlloc(SU_Bind, SIZEOF_NONAUTO_BINDER);
-              memcpy((char *)b, (char *)l, SIZEOF_NONAUTO_BINDER);
+              size_t size = sizeofbinder_((Binder *)l);
+              b = (ClassMember *)GlobAlloc(SU_Bind, (int32)size);
+              memcpy((char *)b, (char *)l, size);
               if (h0_(bindtype_(l)) == t_ovld)
               { TypeExpr *e;
                 e = (TypeExpr *)global_list4(SU_Type, t_ovld, 0, 0, 0);

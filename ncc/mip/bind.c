@@ -258,8 +258,7 @@ static Binder *RecordGlobalBinder(Binder *p)
 
 Binder *global_mk_binder(Binder *b, Symstr *c, SET_BITMAP d, TypeExpr *e)
 {
-    int32 size = d & (bitofstg_(s_virtual)|b_globalregvar|bitofstg_(s_auto)) ?
-                     sizeof(Binder) : SIZEOF_NONAUTO_BINDER;
+    int32 size = (int32)sizeofbinderstg_(d);
     Binder *p = (Binder*) GlobAlloc(SU_Bind, size);
  /*
   * This consistency check is removed so that front-ends for languages
@@ -300,9 +299,7 @@ Binder *global_mk_binder(Binder *b, Symstr *c, SET_BITMAP d, TypeExpr *e)
 
 Binder *mk_binder(Symstr *c, SET_BITMAP d, TypeExpr *e)
 {
-    Binder *p = (Binder*) BindAlloc(
-        (d & (bitofstg_(s_auto)|bitofstg_(s_virtual))) ?
-            sizeof(Binder) : SIZEOF_NONAUTO_BINDER);
+    Binder *p = (Binder*) BindAlloc((int32)sizeofbinderstg_(d));
     if (d & bitofstg_(s_extern)) check_extern(c);
     h0_(p) = s_binder;
     bindcdr_(p)=0;
