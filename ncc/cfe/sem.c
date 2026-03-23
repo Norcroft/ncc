@@ -2646,9 +2646,10 @@ static Expr *trymonadreduce(AEop op, Expr *a, Expr *c, SET_BITMAP flag)
 static Expr *castfn(Expr *e)
 {
     TypeExpr *t1, *t2;
-    Expr *a = arg1_(e), *fname = NULL;
+    Expr *a, *fname = NULL;
     SET_BITMAP m1, m2;
     if (h0_(e) != s_cast) return e;
+    a = arg1_(e);
     t1 = princtype(type_(e));           /* hmm (SOFTWARE_FLOATING_POINT) */
     t2 = princtype(typeofexpr(a));      /* hmm (SOFTWARE_FLOATING_POINT) */
     if (h0_(t1) != s_typespec || h0_(t2) != s_typespec) return e;
