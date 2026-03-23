@@ -482,16 +482,19 @@ static FileLine *globalize_fileline(Expr *e)
 }
 
 static Expr *globalize_integer(Expr *e)
-{   Binder *b = exb_(arg2_(e));
+{   Expr *orig = intorig_(e);
+    Binder *b = (orig != NULL && h0_(orig) == s_binder) ? exb_(orig) : 0;
 /* Don't bother with "globalize_expr(arg2_(e))" for intorig_() field    */
 /* unless the intorig_field is already a global binder... Relied on by  */
-/* C++'s end-of-class default argument binding code. FRIGORAMA!         */
+/* C++'s end-of-class default argument binding code. intorig_() can     */
+/* also be an arbitrary expression (kept only for diagnostics), so only */
+/* preserve it here when it is already a global binder. FRIGORAMA!      */
     if (b != 0 && !(attributes_(b) & A_GLOBALSTORE)) b = 0;
     return (Expr *)global_list5(SU_Other, s_integer,
                                 globalize_typeexpr(type_(e)),
                                 globalize_fileline(e),
                                 arg1_(e),
-/* preseve global binder => */  b);
+/* preserve global binder => */ b);
 }
 
 StringSegList *globalize_strseg(StringSegList *s)
