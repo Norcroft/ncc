@@ -7,6 +7,7 @@
 # Examples:
 #   ./runtests.py --root tests --features explicit,namespaces -j8 --junit out.xml
 #   ./runtests.py --echo -v
+#   ./runtests.py --check asan --cc bin/ncc tests/fpa/codegen/add_f32.c
 #
 # Directives (examples):
 #   // RUN: %cxx %s -c              (optional if default isn't suitable)
@@ -110,6 +111,25 @@ def substitute(cmd: str, src: str, tempstem: str, c_compiler: str, cxx_compiler:
     cmd = cmd.replace('%cxx', shlex.quote(cxx_compiler))
     cmd = cmd.replace('%cc', shlex.quote(c_compiler))
     return cmd
+
+def append_check_suffix(path: str, check: str) -> str:
+    if not check:
+        return path
+
+    suffix = f"-{check}"
+    dirname, basename = os.path.split(path)
+    stem, ext = os.path.splitext(basename)
+
+    if ext:
+        if stem.endswith(suffix):
+            return path
+        basename = stem + suffix + ext
+    else:
+        if basename.endswith(suffix):
+            return path
+        basename = basename + suffix
+
+    return os.path.join(dirname, basename)
 
 def run_one(spec: TestSpec, features: set[str], echo: bool, c_compiler: str, cxx_compiler: str, dump_checked: bool) -> TestResult:
     # gating
@@ -407,6 +427,7 @@ def main():
     p.add_argument('--junit', default='', help='Write JUnit XML to this file')
     p.add_argument('--cc', default='bin/ncc-riscos', help='C compiler to invoke for %%cc')
     p.add_argument('--cxx', default='bin/n++-riscos', help='C++ compiler to invoke for %%cxx')
+    p.add_argument('--check', choices=('asan', 'msan'), default='', help='Append -<check> to %%cc/%%cxx compiler binaries')
     p.add_argument('--echo', action='store_true', help='Echo each expanded RUN command and its temp dir before executing')
     p.add_argument('paths', nargs='*', help='Optional list of test files or directories. If omitted, uses --root.')
     p.add_argument('--match', default='', help='Only run tests whose path contains this substring (case-sensitive).')
@@ -418,6 +439,9 @@ def main():
         args.cc = os.path.join(script_dir, args.cc)
     if not os.path.isabs(args.cxx):
         args.cxx = os.path.join(script_dir, args.cxx)
+
+    args.cc = append_check_suffix(args.cc, args.check)
+    args.cxx = append_check_suffix(args.cxx, args.check)
 
     features = set([t.strip() for t in args.features.split(',') if t.strip()])
 

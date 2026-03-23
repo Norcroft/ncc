@@ -2,20 +2,20 @@
 #
 # Options are:
 #   make ncc [<options>]       	# C compiler (ARM backend)
-#   make n++ [<options>]    	# C++ compiler (ARM backend)
-#   make ntcc               	# C compiler (Thumb backend)
-#   make nt++               	# C++ compiler (Thumb backend)
-#   make all                	# ncc & n++
+#   make n++ [<options>]        # C++ compiler (ARM backend)
+#   make ntcc                   # C compiler (Thumb backend)
+#   make nt++                   # C++ compiler (Thumb backend)
+#   make all                    # ncc & n++
 #   make arm_variants          	# Every ARM/Thumb tool/target/host combination
 #   make clean / make distclean
 
 # ncc and n++ can be compiled to target different plaforms:
-#   TARGET=newton					# Cross compiler targetting Apple Newton
+#   TARGET=newton	              # Cross compiler targetting Apple Newton
 #
-#   TARGET=riscos					# Cross compiler targeting 32-bit RISC OS
-#   TARGET=riscos26					# Cross compiler targeting 26-bit RISC OS
-#   TARGET=riscos   HOST=riscos		# 32-bit RISC OS-native compiler
-#   TARGET=riscos26 HOST=riscos		# 26-bit RISC OS-native compiler
+#   TARGET=riscos	              # Cross compiler targeting 32-bit RISC OS
+#   TARGET=riscos26	            # Cross compiler targeting 26-bit RISC OS
+#   TARGET=riscos   HOST=riscos	# 32-bit RISC OS-native compiler
+#   TARGET=riscos26 HOST=riscos	# 26-bit RISC OS-native compiler
 #
 # RISC OS native compilers first build a suitable RISC OS cross compiler,
 # which then builds the native compiler.
@@ -26,7 +26,8 @@
 # config toggles ----------------
 TARGET      ?= arm          # arm | riscos | riscos26 | newton
 WARN        ?= minimal      # some | minimal | none
-HOST    	?=              # riscos | <blank>
+HOST        ?=              # riscos | <blank>
+CHECK       ?=              # asan | msan | <blank>
 
 .DEFAULT_GOAL := ncc
 
@@ -50,6 +51,25 @@ endif
 TARGET := $(strip $(TARGET))
 WARN   := $(strip $(WARN))
 HOST   := $(strip $(HOST))
+CHECK  := $(strip $(CHECK))
+
+ifneq ($(CHECK),)
+ifeq (,$(filter asan msan,$(CHECK)))
+  $(error CHECK must be blank or one of: asan, msan)
+endif
+endif
+
+ifneq ($(CHECK),)
+ifeq ($(HOST),riscos)
+  $(error CHECK is unsupported with HOST=riscos)
+endif
+endif
+
+SANITIZER_asan := address
+SANITIZER_msan := memory
+CHECK_SUFFIX := $(if $(CHECK),-$(CHECK),)
+CHECK_FLAGS := $(if $(CHECK),-fsanitize=$(SANITIZER_$(CHECK)) -fno-omit-frame-pointer,)
+STORE_BACKEND := $(if $(CHECK),malloc,arena)
 
 # Suffix binaries when TARGET != arm (so we can build multiple variants)
 BIN_SUFFIX := $(if $(filter arm,$(TARGET)),,$(addprefix -,$(TARGET)))
@@ -69,12 +89,12 @@ endif # if HOST=riscos
 
 # Target setup -----------------------------------------------------------------
 
-BIN_NCC    := $(BIN_DIR)/ncc$(BIN_SUFFIX)
-BIN_NCPP   := $(BIN_DIR)/n++$(BIN_SUFFIX)
-BIN_NTCC   := $(BIN_DIR)/ntcc$(BIN_SUFFIX)
-BIN_NTCPP  := $(BIN_DIR)/nt++$(BIN_SUFFIX)
-BIN_INTERP := $(BIN_DIR)/npp$(BIN_SUFFIX)
-BIN_CLBCOMP:= $(BIN_DIR)/clbcomp$(BIN_SUFFIX)
+BIN_NCC    := $(BIN_DIR)/ncc$(BIN_SUFFIX)$(CHECK_SUFFIX)
+BIN_NCPP   := $(BIN_DIR)/n++$(BIN_SUFFIX)$(CHECK_SUFFIX)
+BIN_NTCC   := $(BIN_DIR)/ntcc$(BIN_SUFFIX)$(CHECK_SUFFIX)
+BIN_NTCPP  := $(BIN_DIR)/nt++$(BIN_SUFFIX)$(CHECK_SUFFIX)
+BIN_INTERP := $(BIN_DIR)/npp$(BIN_SUFFIX)$(CHECK_SUFFIX)
+BIN_CLBCOMP:= $(BIN_DIR)/clbcomp$(BIN_SUFFIX)$(CHECK_SUFFIX)
 .SECONDARY:
 
 # default options.h directories per tool, used if TARGET=arm (ie. default).
@@ -107,7 +127,7 @@ BACKEND ?= $(if $(filter ntcc nt++,$(BUILD_TOOL)),thumb,arm)
 BACKEND_DIR := $(NCC_ROOT)/$(BACKEND)
 
 DERIVED_DIR := $(DERIVED_ROOT)/$(TARGET)/$(BACKEND)
-OBJ_DIR     := $(BUILD_DIR)/obj/$(TARGET)$(OBJ_FLAVOUR)/$(BACKEND)
+OBJ_DIR     := $(BUILD_DIR)/obj/$(TARGET)$(OBJ_FLAVOUR)$(CHECK_SUFFIX)/$(BACKEND)
 
 # warnings --------------
 # Minimal changes are made to the source code, but on a modern compiler that
@@ -129,7 +149,8 @@ endif
 # common flags -----------------
 # HOST != riscos. ie. using host's compiler (clang or gcc)
 ifneq ($(HOST),riscos)
-CFLAGS := -O2 -std=gnu89 -fcommon -fno-strict-aliasing $(WFLAGS)
+CFLAGS := -O2 -std=gnu89 -fcommon -fno-strict-aliasing $(WFLAGS) $(CHECK_FLAGS)
+LDFLAGS += $(CHECK_FLAGS)
 LDLIBS := -lm
 
 DEPFLAGS = -MMD -MP -MF $(@:.o=.d)
@@ -234,6 +255,8 @@ DEPREDIR =
 endif
 
 # sources ----------------------
+STORE_SRC := mip/store$(if $(filter malloc,$(STORE_BACKEND)),_malloc,).c
+
 # Common across c, cpp, interp, clbcomp
 CC_CORE_SRCS := \
   mip/aetree.c mip/compiler.c mip/config.c mip/misc.c
@@ -243,7 +266,7 @@ CC_COMMON_SRCS := \
   $(CC_CORE_SRCS) \
   mip/cg.c mip/codebuf.c mip/cse.c mip/csescan.c mip/cseeval.c mip/driver.c \
   mip/dwarf.c mip/dwarf1.c mip/dwarf2.c mip/flowgraf.c mip/inline.c \
-  mip/jopprint.c mip/regalloc.c mip/regsets.c mip/sr.c mip/store.c \
+  mip/jopprint.c mip/regalloc.c mip/regsets.c mip/sr.c $(STORE_SRC) \
   mip/main.c mip/dump.c mip/version.c \
   \
   cfe/pp.c cfe/simplify.c \
@@ -271,7 +294,7 @@ THUMB_SRCS := \
 INTERP_SRCS := \
   $(CC_CORE_SRCS) $(CPPFE_SRCS) $(CFE_SRCS) \
   interp/interp.c \
-  mip/store.c \
+  $(STORE_SRC) \
 
 CLBCOMP_SRCS := \
   $(CC_CORE_SRCS) \
@@ -441,6 +464,8 @@ print:
 	@echo "LDFLAGS=$(LDFLAGS)"
 	@echo "TARGET=$(TARGET) WARN=$(WARN)"
 	@echo "HOST=$(HOST)"
+	@echo "CHECK=$(CHECK)"
+	@echo "STORE_BACKEND=$(STORE_BACKEND)"
 	@echo "BUILD_TOOL=$(BUILD_TOOL)"
 	@echo "BACKEND=$(BACKEND)"
 	@echo "OPTIONS_DIR=$(OPTIONS_DIR)"
