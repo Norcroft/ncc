@@ -2309,7 +2309,8 @@ static DeclSpec rd_declspec(int declflag,
                 opaque = YES;
             nextsym();
         } else {
-            SET_BITMAP typebit = bitoftype_(s & ~s_qualified);
+            AEop basetype = s & ~s_qualified;
+            SET_BITMAP typebit = bitoftype_(basetype);
             TagBinder *instantiatetemplate = NULL;
             int instantiatescope = 0;
 
@@ -2317,7 +2318,7 @@ static DeclSpec rd_declspec(int declflag,
             {   /* this code relies that for type symbols x,y, "x y" is
                    legal iff "y x" is. */
                 cc_err(syn_err_typeclash, s,
-                       typesseen & illtypecombination[shiftoftype_(s)]);
+                       typesseen & illtypecombination[shiftoftype_(basetype)]);
 /* New error recovery: ignore previous types/stgclass and retry.        */
 /* This is better for things like "class T {} int f() {...}".           */
 /* Note that we aren't just inserting a ';', e.g. sizeof(struct{}int)   */
@@ -2340,7 +2341,7 @@ static DeclSpec rd_declspec(int declflag,
                     typebit = bitoftype_(s_longlong);
                 }
                 typesseen |= typebit;
-                illtype |= illtypecombination[shiftoftype_(s)];
+                illtype |= illtypecombination[shiftoftype_(basetype)];
             }
             if (!(typebit & ENUMORCLASSBITS && (s & s_qualified)) &&
                 !(s == s_class && (curlex.sym & ~s_qualified) == s_identifier))
