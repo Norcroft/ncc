@@ -3730,6 +3730,11 @@ TagBinder *syn_implicit_instantiate_2(TagBinder *tb)
     actuals = (ExprList *)dreverse((List *)actuals);
     env = tagformals_(tb);
     sv = ovld_template_app(bindsym_(tb), env, actuals);
+    /* If applying the template args leaves the original name unchanged, pass
+     * the original template tag back up, rather than inventing a
+     * specialisation that can't yet be instantiated. */
+    if (sv == bindsym_(tb))
+        return tb;
     tb2 = instate_tagbinding(sv, tagbindsort(tb), TD_Decl, TOPLEVEL|TEMPLATE, &newtag);
     if (newtag)
     {   Binder *b = instate_classname_typedef(tb2, TOPLEVEL);

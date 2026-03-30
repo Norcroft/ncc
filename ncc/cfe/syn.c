@@ -2452,7 +2452,9 @@ than annoying.  Probably we don't understand the reason for it.
                              (declflag) == (TFORMAL|TEMPLATE) ? TEMPLATE : bind_scope,
                                             &newtag);
 
-                    if (declflag & TEMPLATE && defining == TD_ContentDef)
+                    if (defining == TD_ContentDef &&
+                        (tagbindbits_(b2) & TB_TEMPLATE) &&
+                        tagscope_(b2) == NULL)
                             tagscope_(b2) = dup_template_scope();
 
                     if ((stgseen & bitofstg_(s_friend)) && defining == TD_ContentDef)
@@ -2500,15 +2502,35 @@ than annoying.  Probably we don't understand the reason for it.
                         }
                     }
 
-                    /* the 2nd condition looks unnecessary, but see t14c/_1452W12.cpp */
-                    if (declflag & TEMPLATE && tagbindbits_(b2) & TB_TEMPLATE)
-                    {   if (!newtag)
-                        {   merge_default_template_args(template_formals, b2, NULL);
-                            if (!(tagbindbits_(b2) & TB_DEFD))
-                                tagformals_(b2) = template_formals;
-                        } else
-                        {   tagformals_(b2) = template_formals;
-                            merge_default_template_args(template_formals, b2, NULL);
+                    /* Handle any tag with TB_TEMPLATE here, including non-template
+                     * nested classes that inherit template context from an
+                     * enclosing template.
+                     * Previous comment said to see t14c/_1452W12.cpp.
+                     *
+                     * declflag = parser is handling an explicit template declaration
+                     * tagbindbits_(b2) = template-like, either explicit or inherited.
+                     */
+                    if (tagbindbits_(b2) & TB_TEMPLATE)
+                    {
+                        if (declflag & TEMPLATE)
+                        {   if (!newtag)
+                            {   merge_default_template_args(template_formals, b2, NULL);
+                                if (!(tagbindbits_(b2) & TB_DEFD))
+                                    tagformals_(b2) = template_formals;
+                            } else
+                            {   tagformals_(b2) = template_formals;
+                                merge_default_template_args(template_formals, b2, NULL);
+                            }
+                        } else if (tagformals_(b2) == NULL)
+                        { /* If no template params ourselves... */
+                            if (syn_class_scope != NULL &&
+                                (tagbindbits_(syn_class_scope) & TB_TEMPLATE))
+                            { /* but the enclosing class is template-like */
+                                tagformals_(b2) = tagformals_(syn_class_scope);
+                            } else if (cur_template_formals) {
+                                /* otherwise use ancestor template's params */
+                                tagformals_(b2) = cur_template_formals->bindlistcar;
+                            }
                         }
                     }
 
@@ -2570,7 +2592,7 @@ than annoying.  Probably we don't understand the reason for it.
                                bindsym_(instantiatetemplate), bindsym_(b2));
                         }
                     }
-                    if (declflag & TEMPLATE) (void)lex_bodybegin();
+                    if (tagbindbits_(b2) & TB_TEMPLATE) (void)lex_bodybegin();
 
                     /* avoid spurious (C++?) warning for enum { x,y };  */
                     if (s==s_enum)
@@ -2622,7 +2644,7 @@ than annoying.  Probably we don't understand the reason for it.
                             }
                         }
                     }
-                    if (declflag & TEMPLATE) tagtext_(b2) = lex_bodyend();
+                    if (tagbindbits_(b2) & TB_TEMPLATE) tagtext_(b2) = lex_bodyend();
 
                     if (instantiatetemplate)
                     {   lex_closebody();
